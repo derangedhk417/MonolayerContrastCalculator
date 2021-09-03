@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+papers/Benameur_et.al.pdf
+papers/bing_et.al.pdf
+papers/donnelly2019.pdf
+papers/jessen2018.pdf
+papers/Menon_et.al.pdf
