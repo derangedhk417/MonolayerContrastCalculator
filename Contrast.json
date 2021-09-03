@@ -1,5 +1,5 @@
 {
-	"description" : "TODO: Write this.",
+	"description" : "When supplied with information about a stack of materials and the optics being used to image them, this program calculates the optical contrast of parts of that stack for the R, G and B channels of a specified camera image sensor.",
 	"arguments"   : [
 		{
 			"names" : ["-n", "--refractive-indices"],

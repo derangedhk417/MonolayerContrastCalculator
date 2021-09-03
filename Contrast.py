@@ -118,9 +118,9 @@ class ContrastCalculator:
 		rs, gs, bs = self.getIntensity(substrate_idx)
 		rt, gt, bt = self.getIntensity(0)
 
-		rc = -(rs - rt) / rs
-		gc = -(gs - gt) / gs
-		bc = -(bs - bt) / bs
+		rc = (rs - rt) / rs
+		gc = (gs - gt) / gs
+		bc = (bs - bt) / bs
 
 		return rc, gc, bc
 
@@ -441,18 +441,64 @@ if __name__ == '__main__':
 			plt.show()
 
 	source = (source_spectrum, source_angle_dependence)
-
-	rs, gs, bs = [], [], []
-	thicknesses = np.linspace(10e-9, 400e-9, 256)
-
 	args.wavelength_range = [
 		args.wavelength_range[0] * 1e-9,
 		args.wavelength_range[1] * 1e-9
 	]
 
+	# Color Temperature Variance Test
+	# rs, gs, bs = [], [], []
+	# K          = np.linspace(2000, 4000, 256)
+
+	# for i, k in enumerate(K):
+	# 	print("%d / %d"%(i + 1, len(K)))
+	# 	source = (k, source[1])
+	# 	calculator = ContrastCalculator(
+	# 		refractive_data, args.thicknesses, camera, 
+	# 		source, args.numerical_aperture, args.wavelength_range
+	# 	)
+
+	# 	r, g, b = calculator.getContrast(args.substrate_index)
+	# 	rs.append(r)
+	# 	gs.append(g)
+	# 	bs.append(b)
+
+	# plt.plot(K, rs, color='red')
+	# plt.plot(K, gs, color='green')
+	# plt.plot(K, bs, color='blue')
+	# plt.show()
+
+	# # NA Variance Test
+	# rs, gs, bs = [], [], []
+	# NAs        = np.linspace(0.1, 0.8, 64)
+
+	# for i, NA in enumerate(NAs):
+	# 	print("%d / %d"%(i + 1, len(NAs)))
+	# 	args.numerical_aperture = NA
+	# 	calculator = ContrastCalculator(
+	# 		refractive_data, args.thicknesses, camera, 
+	# 		source, args.numerical_aperture, args.wavelength_range
+	# 	)
+
+	# 	r, g, b = calculator.getContrast(args.substrate_index)
+	# 	rs.append(r)
+	# 	gs.append(g)
+	# 	bs.append(b)
+
+	# plt.plot(NAs, rs, color='red')
+	# plt.plot(NAs, gs, color='green')
+	# plt.plot(NAs, bs, color='blue')
+	# plt.show()
+
+
+
+	# Thickness variance test
+	rs, gs, bs = [], [], []
+	thicknesses = np.linspace(3.4e-10, 20*3.4e-10, 21)
+
 	for i, t in enumerate(thicknesses):
 		print("%d / %d"%(i + 1, len(thicknesses)))
-		args.thicknesses[1] = t
+		args.thicknesses[0] = t
 		calculator = ContrastCalculator(
 			refractive_data, args.thicknesses, camera, 
 			source, args.numerical_aperture, args.wavelength_range
@@ -463,12 +509,13 @@ if __name__ == '__main__':
 		gs.append(g)
 		bs.append(b)
 
-	plt.plot(thicknesses * 1e9, rs, color="red")
-	plt.plot(thicknesses * 1e9, gs, color="green")
-	plt.plot(thicknesses * 1e9, bs, color="blue")
-	plt.xlabel(r"$SiO_2\;Thickness\;[nm]$")
+	plt.scatter(thicknesses * 1e10, rs, color="red", s=2)
+	plt.scatter(thicknesses * 1e10, gs, color="green", s=2)
+	plt.scatter(thicknesses * 1e10, bs, color="blue", s=2)
+	#plt.axhline(0.102)
+	plt.xlabel(r"$Graphene\;Thickness\;[\AA]$")
 	plt.ylabel("Optical Contrast")
-	plt.title("Optical Contrast of Monolayer Graphene as a Function of Silica Thickness")
+	plt.title("Optical Contrast of Graphene as a Function of Thickness, on 90nm SiO2")
 	plt.show()
 
 
