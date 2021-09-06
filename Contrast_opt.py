@@ -114,6 +114,55 @@ class ContrastCalculator:
 		# All of the data is now uniform along it's relevant x-axis and 
 		# normalized. We are now equipped to calculate the overall intensity
 		# of light as detected by the camera on each color channel.
+		self.refractiveData = np.array(refractiveData)
+
+		def getTransmissionAngle(t, n0, n1):
+			return np.arcsin((n0 / n1) * np.sin(t))
+
+		# Prepare the grid that represents the domain of the function and 
+		# calculate the step along both axes.
+		n_layers        = self.refractiveData.shape[0]
+		angle_step      = self.tDomain[-1]  - self.tDomain[-2]
+		wavelength_step = self.wvDomain[-1] - self.wvDomain[-2]
+		T, W            = np.meshgrid(self.tDomain, self.wvDomain)
+
+		# We need a grid where axis 0 is corresponds to an incident angle and
+		# axis 1 corresponds to a wavelength. We'll calculate one such grid for
+		# each layer. Each of these grids will correspond with the angle of 
+		# refraction for that layer, at the given incident angle and the given
+		# wavelength.
+		T, N0           = np.meshgrid(
+			self.tDomain, 
+			[complex(1.0003, 0)] * self.wvDomain.shape[0]
+		)
+		layer_angles  = []
+		layer_indices = []
+
+		layer_indices.append(N0)
+		layer_angles.append(T)
+
+		previous_indices = N0
+		previous_angles  = T
+		for layer in range(n_layers):
+			_, new_indices = np.meshgrid(self.tDomain, self.refractiveData[layer])
+			_, new_angles  = getTransmissionAngle(
+				previous_angles, previous_indices, new_indices
+			)
+			layer_angles.append(new_angles)
+			layer_indices.append(new_indices)
+			previous_indices = new_indices
+			previous_angles  = new_angles
+
+		# We now have the necessary angles of refraction and refractive indices
+		# with respect to incident angle and wavelength for each layer.
+		self.layerAngles    = layer_angles
+		self.layerIndices   = layer_indices
+		self.T_input        = T
+		self.W_input        = W
+		self.angleStep      = angle_step
+		self.wavelengthStep = wavelength_step
+		self.nLayers        = nLayers
+
 
 	def getContrast(self, substrate_idx):
 		rs, gs, bs = self.getIntensity(substrate_idx)
@@ -228,6 +277,12 @@ class ContrastCalculator:
 		rawIntensity = []
 		for w in self.wvDomain:
 			rawIntensity.append(angleIntegral(w))
+
+		
+		p
+
+
+		code.interact(local=locals()) 
 
 		def getChannel(channel):
 			channelIntensity = None
@@ -447,50 +502,6 @@ if __name__ == '__main__':
 		args.wavelength_range[1] * 1e-9
 	]
 
-	# Color Temperature Variance Test
-	# rs, gs, bs = [], [], []
-	# K          = np.linspace(2000, 4000, 256)
-
-	# for i, k in enumerate(K):
-	# 	print("%d / %d"%(i + 1, len(K)))
-	# 	source = (k, source[1])
-	# 	calculator = ContrastCalculator(
-	# 		refractive_data, args.thicknesses, camera, 
-	# 		source, args.numerical_aperture, args.wavelength_range
-	# 	)
-
-	# 	r, g, b = calculator.getContrast(args.substrate_index)
-	# 	rs.append(r)
-	# 	gs.append(g)
-	# 	bs.append(b)
-
-	# plt.plot(K, rs, color='red')
-	# plt.plot(K, gs, color='green')
-	# plt.plot(K, bs, color='blue')
-	# plt.show()
-
-	# # NA Variance Test
-	# rs, gs, bs = [], [], []
-	# NAs        = np.linspace(0.1, 0.8, 64)
-
-	# for i, NA in enumerate(NAs):
-	# 	print("%d / %d"%(i + 1, len(NAs)))
-	# 	args.numerical_aperture = NA
-	# 	calculator = ContrastCalculator(
-	# 		refractive_data, args.thicknesses, camera, 
-	# 		source, args.numerical_aperture, args.wavelength_range
-	# 	)
-
-	# 	r, g, b = calculator.getContrast(args.substrate_index)
-	# 	rs.append(r)
-	# 	gs.append(g)
-	# 	bs.append(b)
-
-	# plt.plot(NAs, rs, color='red')
-	# plt.plot(NAs, gs, color='green')
-	# plt.plot(NAs, bs, color='blue')
-	# plt.show()
-
 	calculator = ContrastCalculator(
 		refractive_data, args.thicknesses, camera, 
 		source, args.numerical_aperture, args.wavelength_range
@@ -502,34 +513,6 @@ if __name__ == '__main__':
 
 	print("Calculation took: %fms"%((end - start) * 1e-6))
 	print("r = %f, g = %f, b = %f"%(r, g, b))
-
-	# # Thickness variance test
-	# rs, gs, bs = [], [], []
-	# thicknesses = np.linspace(10e-9, 400e-9, 128)
-
-	# for i, t in enumerate(thicknesses):
-	# 	print("%d / %d"%(i + 1, len(thicknesses)))
-	# 	args.thicknesses[1] = t
-	# 	calculator = ContrastCalculator(
-	# 		refractive_data, args.thicknesses, camera, 
-	# 		source, args.numerical_aperture, args.wavelength_range
-	# 	)
-
-	# 	r, g, b = calculator.getContrast(args.substrate_index)
-	# 	rs.append(r)
-	# 	gs.append(g)
-	# 	bs.append(b)
-
-	# plt.plot(thicknesses, rs, color="red")
-	# plt.plot(thicknesses, gs, color="green")
-	# plt.plot(thicknesses, bs, color="blue")
-	# #plt.axhline(0.102)
-	# plt.xlabel(r"$SiO_2\;Thickness\;[\AA]$")
-	# plt.ylabel("Optical Contrast")
-	# plt.title(r"Optical Contrast of Graphene as a Function of $SiO_2$ Thickness")
-	# plt.show()
-
-
 
 
 
