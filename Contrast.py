@@ -74,7 +74,7 @@ class ContrastCalculator:
 
 		self.d = d
 
-		self.wvCount = 128 # The number of subdivisions of the wavelength domain
+		self.wvCount = 256 # The number of subdivisions of the wavelength domain
 		self.tCount  = 256 # Number of subdivisions of the theta domain
 		self.angle   = np.arcsin(NA)
 
@@ -86,6 +86,9 @@ class ContrastCalculator:
 		bounds[1] = min(bounds[1], wavelength_range[1])
 		x         = np.linspace(bounds[0], bounds[1], self.wvCount)
 		t         = np.linspace(0, self.angle, self.tCount)
+
+		# Air
+		self.immersion_medium = complex(1.0003, 0.0)
 
 		# Now we need to convert everything that wasn't specified as an array 
 		# into and array so we can interpolate it. We use this interpolation
@@ -143,7 +146,7 @@ class ContrastCalculator:
 			return numerator / denominator
 
 		def reflectionCoefficient_p(t0, indices, w):
-			n0  = complex(1.0003, 0.0)
+			n0  = self.immersion_medium
 			n1  = indices[idx]
 			t1  = getTransmissionAngle(t0, n0, n1)
 			r0  = partialReflection_p(t0, t1, n0, n1)
@@ -176,7 +179,7 @@ class ContrastCalculator:
 				return (r0 + inner * ex) / (1 + r0 * inner * ex)
 
 		def reflectionCoefficient_s(t0, indices, w):
-			n0  = complex(1.0003, 0.0)
+			n0  = self.immersion_medium
 			n1  = indices[idx]
 			t1  = getTransmissionAngle(t0, n0, n1)
 			r0  = partialReflection_s(t0, t1, n0, n1)
@@ -298,15 +301,26 @@ class ContrastCalculator:
 		# Now convert the source spectrum if only a color temperature was 
 		# specified.
 		if type(source[0]) is not tuple:
-			h = 6.62607015e-34
-			c = 299792458
-			k = 1.380649e-23
-			def Planck(wv, T):
-				res = (2 * h * c / (wv**3))
-				res = res * (1 / (np.exp((h * c) / (wv * k * T)) - 1))
-				return res
+			if type(source[0]) is str:
+				# Treat this as a FWHM and center wavelength for a "monochromatic" source.
+				center, fwhm    = [float(i) for i in source[0].split(',')]
+				s               = fwhm / np.sqrt(2 * np.log(2))
+				def gaussian(x, s, x0):
+					A = (1 / (s * np.sqrt(2*np.pi)))
+					return A * np.exp(-np.square(x - x0) / (2 * np.square(s)))
+				sourceSpectrum = (x, gaussian(x, s, center))
+				# plt.plot(*sourceSpectrum)
+				# plt.show()
+			else:
+				h = 6.62607015e-34
+				c = 299792458
+				k = 1.380649e-23
+				def Planck(wv, T):
+					res = (2 * h * c / (wv**3))
+					res = res * (1 / (np.exp((h * c) / (wv * k * T)) - 1))
+					return res
 
-			sourceSpectrum = (x, Planck(x, source[0]))
+				sourceSpectrum = (x, Planck(x, source[0]))
 		else:
 			sourceSpectrum = source[0]
 
@@ -420,14 +434,17 @@ if __name__ == '__main__':
 		s = float(args.source_spectrum)
 		source_spectrum = s
 	except:
-		data = getCSVFloats(args.source_spectrum)
-		wv   = [i[0] for i in data]
-		I    = [i[1] for i in data]
-		source_spectrum = (wv, I)
+		if ',' in args.source_spectrum:
+			source_spectrum = args.source_spectrum
+		else:
+			data = getCSVFloats(args.source_spectrum)
+			wv   = [i[0] for i in data]
+			I    = [i[1] for i in data]
+			source_spectrum = (wv, I)
 
-		if args.plot_data:
-			plt.plot(wv, I)
-			plt.show()
+			if args.plot_data:
+				plt.plot(wv, I)
+				plt.show()
 
 	try:
 		g = float(args.source_angle_dependence)
@@ -496,38 +513,92 @@ if __name__ == '__main__':
 		source, args.numerical_aperture, args.wavelength_range
 	)
 
-	start   = time.time_ns()
-	r, g, b = calculator.getContrast(args.substrate_index)
-	end     = time.time_ns()
+	# start   = time.time_ns()
+	# r, g, b = calculator.getContrast(args.substrate_index)
+	# end     = time.time_ns()
 
-	print("Calculation took: %fms"%((end - start) * 1e-6))
-	print("r = %f, g = %f, b = %f"%(r, g, b))
+	# print("Calculation took: %fms"%((end - start) * 1e-6))
+	# print("r = %f, g = %f, b = %f"%(r, g, b))
 
 	# # Thickness variance test
 	# rs, gs, bs = [], [], []
-	# thicknesses = np.linspace(10e-9, 400e-9, 128)
+	# thicknesses = np.linspace(3.33e-10, 50*3.33e-10, 51)
+	# calculator = ContrastCalculator(
+	# 	refractive_data, args.thicknesses, camera, 
+	# 	source, args.numerical_aperture, args.wavelength_range
+	# )
 
 	# for i, t in enumerate(thicknesses):
 	# 	print("%d / %d"%(i + 1, len(thicknesses)))
-	# 	args.thicknesses[1] = t
-	# 	calculator = ContrastCalculator(
-	# 		refractive_data, args.thicknesses, camera, 
-	# 		source, args.numerical_aperture, args.wavelength_range
-	# 	)
+	# 	calculator.immersion_medium = complex(1.42, 0.0)
+	# 	calculator.d[0] = t
 
 	# 	r, g, b = calculator.getContrast(args.substrate_index)
 	# 	rs.append(r)
 	# 	gs.append(g)
 	# 	bs.append(b)
 
-	# plt.plot(thicknesses, rs, color="red")
-	# plt.plot(thicknesses, gs, color="green")
-	# plt.plot(thicknesses, bs, color="blue")
+	# plt.scatter(thicknesses, rs, color="red", s=2)
+	# plt.scatter(thicknesses, gs, color="green", s=2)
+	# plt.scatter(thicknesses, bs, color="blue", s=2)
+	# # plt.plot(thicknesses, rs, color="red")
+	# # plt.plot(thicknesses, gs, color="green")
+	# # plt.plot(thicknesses, bs, color="blue")
 	# #plt.axhline(0.102)
-	# plt.xlabel(r"$SiO_2\;Thickness\;[\AA]$")
+	# plt.xlabel(r"$h-BN\;Thickness\;[\AA]$")
 	# plt.ylabel("Optical Contrast")
-	# plt.title(r"Optical Contrast of Graphene as a Function of $SiO_2$ Thickness")
+	# plt.title(r"Optical Contrast of h-BN as a Function of Thickness on PDMS")
 	# plt.show()
+
+	# Monochromatic source test
+	rs, gs, bs = [], [], []
+	centers = np.linspace(435e-9, 655e-9, 64)
+
+	for i, c in enumerate(centers):
+		print("%d / %d"%(i + 1, len(centers)))
+		calculator = ContrastCalculator(
+			refractive_data, args.thicknesses, camera, 
+			(','.join([str(c), str(10e-9)]), source[1]), 
+			args.numerical_aperture, args.wavelength_range
+		)
+		calculator.immersion_medium = complex(1.40, 0.0)
+		r, g, b = calculator.getContrast(args.substrate_index)
+		rs.append(r)
+		gs.append(g)
+		bs.append(b)
+
+	plt.plot(centers, rs, color="red")
+	plt.plot(centers, gs, color="green")
+	plt.plot(centers, bs, color="blue")
+	#plt.axhline(0.102)
+	plt.xlabel(r"$h-BN\;Thickness\;[\AA]$")
+	plt.ylabel("Optical Contrast")
+	plt.title(r"Optical Contrast of h-BN as a Function of Source Wavelength")
+	plt.show()
+
+	# Immersion Medium Test
+	# rs, gs, bs = [], [], []
+	# indices = np.linspace(1.0, 2.0, 1024)
+
+	# for i, n in enumerate(indices):
+	# 	print("%d / %d"%(i + 1, len(indices)))
+	# 	calculator.immersion_medium = complex(n, 0.0)
+	# 	r, g, b = calculator.getContrast(args.substrate_index)
+	# 	rs.append(r)
+	# 	gs.append(g)
+	# 	bs.append(b)
+
+	# plt.yscale('log')
+	# plt.plot(indices, rs, color="red")
+	# plt.plot(indices, gs, color="green")
+	# plt.plot(indices, bs, color="blue")
+	# #plt.axhline(0.102)
+	# plt.axhline(0.2)
+	# plt.xlabel(r"Refractive Index of Immersion Media")
+	# plt.ylabel("Optical Contrast")
+	# plt.title(r"Optical Contrast of h-BN as a Function of Immersion Media on PDMS")
+	# plt.show()
+
 
 
 
