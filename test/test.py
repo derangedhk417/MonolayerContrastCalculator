@@ -23,11 +23,11 @@ if __name__ == '__main__':
 
 	# Initialize a calculator.
 	calculator = ContrastCalculatorLoader(
-		["graphene.csv", "quartz_thin_film.csv", "silicon.csv"],
+		["graphene.csv", "silica_maltison_1965.csv", "silicon_green_1995.csv"],
 		"ICX282AQ.csv",
 		3200,
-		0.1,
-		heights=[3.33e-10, 90e-9],
+		1.0,
+		heights=[3.35e-10, 90e-9],
 		lens={
 			'NA' : 0.42,
 			'spectral_domain' : [
@@ -35,8 +35,8 @@ if __name__ == '__main__':
 				698e-9
 			]
 		},
-		wavelength_resolution=96,
-		angle_resolution=96
+		wavelength_resolution=128,
+		angle_resolution=128
 	).getCalculator()
 
 

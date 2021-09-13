@@ -28,6 +28,9 @@ class ContrastCalculator:
 
 		# Calculate the angle bounds for the integration.
 		NA = self.lens['NA']
+		# self.angle_domain = np.linspace(
+		# 	0.0, np.arcsin(NA / self.medium.real), self.wavelength_resolution
+		# )
 		self.angle_domain = np.linspace(
 			0.0, np.arcsin(NA / self.medium.real), self.wavelength_resolution
 		)
@@ -137,9 +140,9 @@ class ContrastCalculator:
 		def innerIntegrand(t, indices, w):
 			Rp = reflectionCoefficient_p(t, indices, w)
 			Rs = reflectionCoefficient_s(t, indices, w)
-			I = (Rp.real**2 + Rp.imag**2 + Rs.real**2 + Rs.imag**2) / 2
+			I = Rp.real**2 + Rp.imag**2 + Rs.real**2 + Rs.imag**2
 
-			return I * self.sourceIntensity
+			return I * self.sourceIntensity * np.sin(t)
 
 		def angleIntegral(w):
 			index   = np.where(self.wavelength_domain == w)[0][0]
@@ -249,7 +252,7 @@ class ContrastCalculator:
 				c = 299792458
 				k = 1.380649e-23
 				def Planck(wv, T):
-					res = (2 * h * c / (wv**3))
+					res = (2 * h * (c**2) / (wv**5))
 					res = res * (1 / (np.exp((h * c) / (wv * k * T)) - 1))
 					return res
 
@@ -294,16 +297,36 @@ class ContrastCalculator:
 		self.sourceSpectrum = spectrumInterp(self.wavelength_domain)
 
 		# Calculate the source angle dependence from the parameter given.
+		# self.sourceIntensity = np.exp(
+		# 	-np.square(self.angle_domain) / (2 * np.square(self.source['angle_dependence']))
+		# )
 		self.sourceIntensity = np.exp(
-			-np.square(self.angle_domain) / (2 * np.square(self.source['angle_dependence']))
+			-2 * np.square(np.sin(self.angle_domain)) / (np.square(np.sin(self.angle_domain[-1])))
 		)
+
+		self._normalize()
+		
+	def _normalize(self):
+		redConstant   = simpson(self.redResponse,   self.wavelength_domain)
+		greenConstant = simpson(self.greenResponse, self.wavelength_domain)
+		blueConstant  = simpson(self.blueResponse,  self.wavelength_domain)
+
+		self.redResponse   = self.redResponse   / redConstant
+		self.greenResponse = self.greenResponse / greenConstant
+		self.blueResponse  = self.blueResponse  / blueConstant
+
+		spectrumConstant = simpson(self.sourceSpectrum, self.wavelength_domain)
+		self.sourceSpectrum = self.sourceSpectrum / spectrumConstant
+
+		intensityConstant = simpson(self.sourceIntensity, self.angle_domain)
+		self.sourceIntensity = self.sourceIntensity / intensityConstant
 
 	def setSourceSpectrumTemperature(self, temperature):
 		h = 6.62607015e-34
 		c = 299792458
 		k = 1.380649e-23
 		def Planck(wv, T):
-			res = (2 * h * c / (wv**3))
+			res = (2 * h * (c**2) / (wv**5))
 			res = res * (1 / (np.exp((h * c) / (wv * k * T)) - 1))
 			return res
 
@@ -321,7 +344,7 @@ class ContrastCalculator:
 		self.medium = medium
 
 	def setHeights(self, heights):
-		self.heights = heights	
+		self.heights = heights
 
 	# Performs basic validation, ensuring that all required arguments are supplied and providing
 	# defaults for optional arguments that are not specified. This function will set all of the
