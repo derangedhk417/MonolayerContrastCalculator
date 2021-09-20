@@ -490,51 +490,134 @@ def preprocess(args_specification):
 
 if __name__ == '__main__':
 	# Load the arguments file. 
-	with open("_FPContrastCalculator.args.json", 'r') as file:
-		args_specification = json.loads(file.read())
-	args = preprocess(args_specification)
+	# with open("_FPContrastCalculator.args.json", 'r') as file:
+	# 	args_specification = json.loads(file.read())
+	# args = preprocess(args_specification)
+
+	# calculator = ContrastCalculatorLoader(
+	# 	args.refractive_indices,
+	# 	args.camera,
+	# 	args.source_spectrum,
+	# 	float(args.source_angle_dependence),
+	# 	heights=args.thicknesses,
+	# 	lens={
+	# 		'NA' : args.numerical_aperture,
+	# 		'spectral_domain' : [
+	# 			args.wavelength_range[0] * 1e-9,
+	# 			args.wavelength_range[1] * 1e-9
+	# 		]
+	# 	},
+	# 	wavelength_resolution=96,
+	# 	angle_resolution=96
+	# ).getCalculator()
+
+	# This code dumps out values for various thicknesses so you can use them elsewhere.
+	# https://www.hindawi.com/journals/jnm/2014/989672/
+	# The thickness of graphene as a function of layer number appears to be
+	# d = 0.475*n -0.14 with an error that is well under a femto-meter.
+	n = np.arange(200) + 1
+	d = 0.475e-9*n - 0.14e-9
 
 	calculator = ContrastCalculatorLoader(
-		args.refractive_indices,
-		args.camera,
-		args.source_spectrum,
-		float(args.source_angle_dependence),
-		heights=args.thicknesses,
+		# ["materials/graphene.csv", "materials/quartz_thin_film.csv", "materials/silicon.csv"],
+		["materials/graphene.csv", "materials/pdms.csv"],
+		"cameras/IMX264.csv",
+		2200,
+		1.0,
+		#heights=[3.34e-10, 90e-9],
+		heights=[3.34e-10],
 		lens={
-			'NA' : args.numerical_aperture,
+			'NA' : 0.42,
 			'spectral_domain' : [
-				args.wavelength_range[0] * 1e-9,
-				args.wavelength_range[1] * 1e-9
+				435e-9,
+				655e-9
+			]
+		},
+		wavelength_resolution=96,
+		angle_resolution=96
+	).getCalculator()
+	# We'll use the refractive index values for graphene for the first calculation and then
+	# the values for c-Plane HOPG for all the other calculations.
+	r0, g0, b0 = calculator.getContrast(1)
+	r,  g,  b  = [r0], [g0], [b0]
+
+	calculator = ContrastCalculatorLoader(
+		# ["materials/HOPG_c_plane.csv", "materials/quartz_thin_film.csv", "materials/silicon.csv"],
+		["materials/graphene.csv", "materials/pdms.csv"],
+		"cameras/IMX264.csv",
+		2200,
+		1.0,
+		# heights=[3.34e-10, 90e-9],
+		heights=[3.34e-10],
+		lens={
+			'NA' : 0.42,
+			'spectral_domain' : [
+				435e-9,
+				655e-9
 			]
 		},
 		wavelength_resolution=96,
 		angle_resolution=96
 	).getCalculator()
 
-	# TEST CODE
-	thicknesses = np.linspace(10e-9, 650e-9, 256)
 
-	r = []
-	g = []
-	b = []
-
-	for i, t in enumerate(thicknesses):
-		print("%d / %d"%(i + 1, len(thicknesses)))
-		heights    = args.thicknesses
-		heights[1] = t
+	for i, d0 in enumerate(d[1:]):
+		print("%d / %d"%(i + 1, len(d)))
+		heights = calculator.heights
+		heights[0] = d0
 		calculator.setHeights(heights)
-		r0, g0, b0 = calculator.getContrast(args.substrate_index)
-		r.append(-r0)
-		g.append(-g0)
-		b.append(-b0)
+		r0, g0, b0 = calculator.getContrast(1)
+		r.append(r0)
+		g.append(g0)
+		b.append(b0)
 
-	plt.plot(thicknesses, r, color='red')
-	plt.plot(thicknesses, g, color='green')
-	plt.plot(thicknesses, b, color='blue')
-	plt.xlabel(r"Thickness of $SiO_2$ [m]")
-	plt.ylabel(r"Optical Contrast of Graphene")
-	plt.title(r"Optical contrast of Graphene as a function of $SiO_2$ Thickness")
+	# out = "n,d,r,g,b\n"
+	# for n0, d0, r0, g0, b0 in zip(n, d, r, g, b):
+	# 	out += "%d,%E,%E,%E,%E\n"%(n0, d0, r0, g0, b0)
+	# with open("graphene_pdms_data.csv", 'w') as file:
+	# 	file.write(out)
+
+	out = []
+	for n0, d0, r0, g0, b0 in zip(n, d, r, g, b):
+		out.append([int(n0), d0, r0, g0, b0])
+
+	#code.interact(local=locals())
+	with open("graphene_pdms_data.json", 'w') as file:
+		file.write(json.dumps({"layers": out}))
+
+	plt.scatter(n, r, color='red',   s=3)
+	plt.scatter(n, g, color='green', s=3)
+	plt.scatter(n, b, color='blue',  s=3)
+	plt.xlabel("Number of Layers")
+	plt.ylabel("Optical Contrast")
+	plt.title(r"Optical Contrast vs. Number of Layers for Graphene/Graphite on PDMS")
 	plt.show()
+
+
+	# TEST CODE
+	# thicknesses = np.linspace(10e-9, 650e-9, 256)
+
+	# r = []
+	# g = []
+	# b = []
+
+	# for i, t in enumerate(thicknesses):
+	# 	print("%d / %d"%(i + 1, len(thicknesses)))
+	# 	heights    = args.thicknesses
+	# 	heights[1] = t
+	# 	calculator.setHeights(heights)
+	# 	r0, g0, b0 = calculator.getContrast(args.substrate_index)
+	# 	r.append(-r0)
+	# 	g.append(-g0)
+	# 	b.append(-b0)
+
+	# plt.plot(thicknesses, r, color='red')
+	# plt.plot(thicknesses, g, color='green')
+	# plt.plot(thicknesses, b, color='blue')
+	# plt.xlabel(r"Thickness of $SiO_2$ [m]")
+	# plt.ylabel(r"Optical Contrast of Graphene")
+	# plt.title(r"Optical contrast of Graphene as a function of $SiO_2$ Thickness")
+	# plt.show()
 	# END TEST CODE
 
 
