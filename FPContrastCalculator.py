@@ -515,12 +515,15 @@ if __name__ == '__main__':
 	# https://www.hindawi.com/journals/jnm/2014/989672/
 	# The thickness of graphene as a function of layer number appears to be
 	# d = 0.475*n -0.14 with an error that is well under a femto-meter.
-	n = np.arange(200) + 1
+	n = np.arange(20) + 1
 	d = 0.475e-9*n - 0.14e-9
+	d *= 2
+	print(d)
 
 	calculator = ContrastCalculatorLoader(
 		# ["materials/graphene.csv", "materials/quartz_thin_film.csv", "materials/silicon.csv"],
-		["materials/graphene.csv", "materials/pdms.csv"],
+		#["materials/graphene.csv", "materials/quartz_thin_film.csv", "materials/silicon.csv"],
+		["materials/tungsten_diselenide.csv", "materials/pdms.csv"],
 		"cameras/IMX264.csv",
 		2200,
 		1.0,
@@ -533,8 +536,8 @@ if __name__ == '__main__':
 				655e-9
 			]
 		},
-		wavelength_resolution=96,
-		angle_resolution=96
+		wavelength_resolution=128,
+		angle_resolution=128
 	).getCalculator()
 	# We'll use the refractive index values for graphene for the first calculation and then
 	# the values for c-Plane HOPG for all the other calculations.
@@ -543,7 +546,7 @@ if __name__ == '__main__':
 
 	calculator = ContrastCalculatorLoader(
 		# ["materials/HOPG_c_plane.csv", "materials/quartz_thin_film.csv", "materials/silicon.csv"],
-		["materials/graphene.csv", "materials/pdms.csv"],
+		["materials/tungsten_diselenide.csv", "materials/pdms.csv"],
 		"cameras/IMX264.csv",
 		2200,
 		1.0,
@@ -556,8 +559,8 @@ if __name__ == '__main__':
 				655e-9
 			]
 		},
-		wavelength_resolution=96,
-		angle_resolution=96
+		wavelength_resolution=128,
+		angle_resolution=128
 	).getCalculator()
 
 
@@ -582,15 +585,16 @@ if __name__ == '__main__':
 		out.append([int(n0), d0, r0, g0, b0])
 
 	#code.interact(local=locals())
-	with open("graphene_pdms_data.json", 'w') as file:
+	with open("graphene_SiO2_Silicon_data.json", 'w') as file:
 		file.write(json.dumps({"layers": out}))
 
 	plt.scatter(n, r, color='red',   s=3)
 	plt.scatter(n, g, color='green', s=3)
 	plt.scatter(n, b, color='blue',  s=3)
 	plt.xlabel("Number of Layers")
+	plt.xticks(np.arange(20) + 1)
 	plt.ylabel("Optical Contrast")
-	plt.title(r"Optical Contrast vs. Number of Layers for Graphene/Graphite on PDMS")
+	plt.title(r"Optical Contrast vs. Number of Layers for $WSe_2$ on PDMS")
 	plt.show()
 
 
